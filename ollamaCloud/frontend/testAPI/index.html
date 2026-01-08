@@ -22,15 +22,210 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       background: #000000;
       color: #b0b0b0;
+      display: flex;
+    }
+
+    .sidebar {
+      width: 260px;
+      background: #0a0a0a;
+      border-right: 1px solid #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+
+    .sidebar-header {
+      padding: 16px;
+      border-bottom: 1px solid #1a1a1a;
+    }
+
+    .new-chat-btn {
+      width: 100%;
+      background: #ffffff;
+      color: #000000;
+      border: none;
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .new-chat-btn:hover {
+      background: #e0e0e0;
+    }
+
+    .chats-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 8px;
+    }
+
+    .chats-list::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .chats-list::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .chats-list::-webkit-scrollbar-thumb {
+      background: #1a1a1a;
+      border-radius: 3px;
+    }
+
+    .chat-item {
+      padding: 10px 12px;
+      margin-bottom: 4px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .chat-item:hover {
+      background: #0f0f0f;
+    }
+
+    .chat-item.active {
+      background: #1a1a1a;
+    }
+
+    .chat-title {
+      flex: 1;
+      font-size: 14px;
+      color: #b0b0b0;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .chat-actions {
+      display: flex;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+
+    .chat-item:hover .chat-actions {
+      opacity: 1;
+    }
+
+    .chat-action-btn {
+      background: transparent;
+      border: none;
+      color: #666666;
+      cursor: pointer;
+      padding: 4px 6px;
+      font-size: 12px;
+      border-radius: 3px;
+      transition: all 0.2s;
+    }
+
+    .chat-action-btn:hover {
+      background: #1a1a1a;
+      color: #ffffff;
+    }
+
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .top-header {
+      display: none;
+      padding: 12px 16px;
+      border-bottom: 1px solid #1a1a1a;
+      background: #000000;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .menu-button {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      justify-content: center;
+      align-items: center;
+      width: 36px;
+      height: 36px;
+    }
+
+    .menu-button span {
+      display: block;
+      width: 20px;
+      height: 2px;
+      background: #ffffff;
+      border-radius: 2px;
+      transition: all 0.3s;
+    }
+
+    .menu-button:active span {
+      background: #b0b0b0;
+    }
+
+    .header-title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #ffffff;
+    }
+
+    .new-chat-icon {
+      background: transparent;
+      border: none;
+      color: #ffffff;
+      cursor: pointer;
+      padding: 8px;
+      font-size: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 4px;
+      transition: background 0.2s;
+    }
+
+    .new-chat-icon:hover {
+      background: #1a1a1a;
+    }
+
+    .sidebar-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 99;
     }
 
     .container {
+      flex: 1;
       display: flex;
       flex-direction: column;
-      width: 100%;
-      height: 100%;
       max-width: 1200px;
       margin: 0 auto;
+      width: 100%;
     }
 
     .chat-container {
@@ -247,6 +442,26 @@
     }
 
     @media (max-width: 768px) {
+      .sidebar {
+        position: absolute;
+        left: -260px;
+        height: 100%;
+        z-index: 100;
+        transition: left 0.3s;
+      }
+
+      .sidebar.open {
+        left: 0;
+      }
+
+      .sidebar-overlay.visible {
+        display: block;
+      }
+
+      .top-header {
+        display: flex;
+      }
+
       .chat-container {
         padding: 16px;
       }
@@ -266,23 +481,46 @@
   </style>
 </head>
 <body>
-  <div class="container">
-    <div class="chat-container" id="chatContainer">
-      <div class="empty-state">
-        <h1>AI Chat</h1>
-        <p>Ask me anything about cybersecurity, programming, research, or general questions.</p>
-      </div>
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+  
+  <div class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <button class="new-chat-btn" onclick="createNewChat()">+ New Chat</button>
     </div>
+    <div class="chats-list" id="chatsList"></div>
+  </div>
 
-    <div class="input-container">
-      <div class="input-wrapper-inner">
-        <textarea 
-          id="userInput" 
-          class="input-field" 
-          placeholder="Type your message..."
-          rows="1"
-        ></textarea>
-        <button id="sendButton" class="send-button">Send</button>
+  <div class="main-content">
+    <div class="top-header">
+      <div class="header-left">
+        <button class="menu-button" onclick="toggleSidebar()">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <span class="header-title">AI Chat</span>
+      </div>
+      <button class="new-chat-icon" onclick="createNewChat()">+</button>
+    </div>
+    
+    <div class="container">
+      <div class="chat-container" id="chatContainer">
+        <div class="empty-state">
+          <h1>StringManolo AI Chat</h1>
+          <p>Ask me anything about cybersecurity, programming, research, or general questions.</p>
+        </div>
+      </div>
+
+      <div class="input-container">
+        <div class="input-wrapper-inner">
+          <textarea 
+            id="userInput" 
+            class="input-field" 
+            placeholder="Type your message..."
+            rows="1"
+          ></textarea>
+          <button id="sendButton" class="send-button">Send</button>
+        </div>
       </div>
     </div>
   </div>
@@ -291,7 +529,194 @@
     const chatContainer = document.getElementById('chatContainer');
     const userInput = document.getElementById('userInput');
     const sendButton = document.getElementById('sendButton');
+    const chatsList = document.getElementById('chatsList');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarOverlay = document.getElementById('sidebarOverlay');
+    
     let isStreaming = false;
+    let currentChatId = null;
+    let chats = {};
+
+    // Toggle sidebar for mobile
+    function toggleSidebar() {
+      sidebar.classList.toggle('open');
+      sidebarOverlay.classList.toggle('visible');
+    }
+
+    // Load chats from localStorage
+    function loadChats() {
+      const saved = localStorage.getItem('ai-chats');
+      if (saved) {
+        chats = JSON.parse(saved);
+      }
+      
+      // Create default chat if none exist
+      if (Object.keys(chats).length === 0) {
+        createNewChat();
+      } else {
+        // Load the most recent chat
+        const chatIds = Object.keys(chats).sort((a, b) => 
+          chats[b].updatedAt - chats[a].updatedAt
+        );
+        currentChatId = chatIds[0];
+      }
+      
+      renderChatsList();
+      loadChat(currentChatId);
+    }
+
+    // Save chats to localStorage
+    function saveChats() {
+      localStorage.setItem('ai-chats', JSON.stringify(chats));
+    }
+
+    // Create new chat
+    function createNewChat() {
+      const id = 'chat-' + Date.now();
+      chats[id] = {
+        id: id,
+        title: 'New Chat',
+        messages: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+      };
+      currentChatId = id;
+      saveChats();
+      renderChatsList();
+      loadChat(id);
+      
+      // Update header title on mobile
+      const headerTitle = document.querySelector('.header-title');
+      if (headerTitle && window.innerWidth <= 768) {
+        headerTitle.textContent = 'New Chat';
+      }
+    }
+
+    // Load a specific chat
+    function loadChat(id) {
+      currentChatId = id;
+      const chat = chats[id];
+      
+      // Update header title on mobile
+      const headerTitle = document.querySelector('.header-title');
+      if (headerTitle && window.innerWidth <= 768) {
+        headerTitle.textContent = chat.title;
+      }
+      
+      // Close sidebar on mobile if open
+      if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
+        toggleSidebar();
+      }
+      
+      // Clear container
+      chatContainer.innerHTML = '';
+      
+      if (chat.messages.length === 0) {
+        chatContainer.innerHTML = `
+          <div class="empty-state">
+            <h1>AI Chat</h1>
+            <p>Ask me anything about cybersecurity, programming, research, or general questions.</p>
+          </div>
+        `;
+      } else {
+        // Render all messages
+        chat.messages.forEach(msg => {
+          const { messageDiv } = addMessageToDOM(msg.role, msg.content, msg.reasoning);
+        });
+      }
+      
+      renderChatsList();
+    }
+
+    // Delete a chat
+    function deleteChat(id, event) {
+      event.stopPropagation();
+      
+      if (Object.keys(chats).length === 1) {
+        alert('Cannot delete the last chat');
+        return;
+      }
+      
+      delete chats[id];
+      
+      if (currentChatId === id) {
+        const remainingIds = Object.keys(chats);
+        currentChatId = remainingIds[0];
+        loadChat(currentChatId);
+      }
+      
+      saveChats();
+      renderChatsList();
+    }
+
+    // Export a chat
+    function exportChat(id, event) {
+      event.stopPropagation();
+      
+      const chat = chats[id];
+      let text = `Chat: ${chat.title}\nExported: ${new Date().toISOString()}\n\n`;
+      
+      chat.messages.forEach(msg => {
+        text += `${msg.role === 'user' ? 'You' : 'Assistant'}:\n`;
+        if (msg.reasoning) {
+          text += `[Thinking: ${msg.reasoning}]\n`;
+        }
+        text += `${msg.content}\n\n`;
+      });
+      
+      // Create download
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${chat.title.replace(/[^a-z0-9]/gi, '_')}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    // Render chats list
+    function renderChatsList() {
+      const sortedChats = Object.values(chats).sort((a, b) => 
+        b.updatedAt - a.updatedAt
+      );
+      
+      chatsList.innerHTML = sortedChats.map(chat => `
+        <div class="chat-item ${chat.id === currentChatId ? 'active' : ''}" 
+             onclick="loadChat('${chat.id}')">
+          <span class="chat-title">${escapeHtml(chat.title)}</span>
+          <div class="chat-actions">
+            <button class="chat-action-btn" onclick="exportChat('${chat.id}', event)" title="Export">
+              ↓
+            </button>
+            <button class="chat-action-btn" onclick="deleteChat('${chat.id}', event)" title="Delete">
+              ×
+            </button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Escape HTML
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Update chat title based on first message
+    function updateChatTitle(chatId, firstMessage) {
+      if (chats[chatId].title === 'New Chat') {
+        chats[chatId].title = firstMessage.substring(0, 40) + (firstMessage.length > 40 ? '...' : '');
+        saveChats();
+        renderChatsList();
+        
+        // Update header title on mobile
+        const headerTitle = document.querySelector('.header-title');
+        if (headerTitle && window.innerWidth <= 768) {
+          headerTitle.textContent = chats[chatId].title;
+        }
+      }
+    }
 
     userInput.addEventListener('input', function() {
       this.style.height = 'auto';
@@ -326,7 +751,7 @@
           <span class="thinking-label">Thinking</span>
         </div>
         <div class="thinking-content" id="${thinkingId}">
-          <div class="thinking-text">${reasoning}</div>
+          <div class="thinking-text">${escapeHtml(reasoning)}</div>
         </div>
       `;
       
@@ -346,23 +771,30 @@
       }
     };
 
-    function addMessage(role, content) {
+    function addMessageToDOM(role, content, reasoning = null) {
       clearEmptyState();
       
       const messageDiv = document.createElement('div');
       messageDiv.className = `message ${role}-message`;
       
       messageDiv.innerHTML = `
-        <div class="message-content">${content}</div>
+        <div class="message-content">${escapeHtml(content)}</div>
       `;
       
       chatContainer.appendChild(messageDiv);
       chatContainer.scrollTop = chatContainer.scrollHeight;
       
-      return {
+      const result = {
         contentElement: messageDiv.querySelector('.message-content'),
         messageDiv: messageDiv
       };
+      
+      if (reasoning) {
+        const thinkingBlock = createThinkingBlock(reasoning);
+        messageDiv.insertBefore(thinkingBlock, messageDiv.firstChild);
+      }
+      
+      return result;
     }
 
     async function sendMessage() {
@@ -376,11 +808,22 @@
       sendButton.textContent = 'Sending...';
       userInput.disabled = true;
 
-      addMessage('user', prompt);
+      // Update chat title if first message
+      if (chats[currentChatId].messages.length === 0) {
+        updateChatTitle(currentChatId, prompt);
+      }
+
+      // Add user message
+      const userMsg = { role: 'user', content: prompt };
+      chats[currentChatId].messages.push(userMsg);
+      chats[currentChatId].updatedAt = Date.now();
+      saveChats();
+      
+      addMessageToDOM('user', prompt);
       userInput.value = '';
       userInput.style.height = 'auto';
 
-      const { contentElement, messageDiv } = addMessage('assistant', '');
+      const { contentElement, messageDiv } = addMessageToDOM('assistant', '');
       let fullResponse = '';
       let fullReasoning = '';
       let thinkingBlock = null;
@@ -394,7 +837,10 @@
           },
           body: JSON.stringify({
             model: "gpt-oss:120b-cloud",
-            messages: [{ role: "user", content: prompt }],
+            messages: chats[currentChatId].messages.map(m => ({
+              role: m.role,
+              content: m.content
+            })),
             stream: true
           })
         });
@@ -420,27 +866,22 @@
               
               const json = JSON.parse(jsonLine);
               
-              // Handle streaming format
               if (json.choices && json.choices[0] && json.choices[0].delta) {
                 const delta = json.choices[0].delta;
                 
-                // Accumulate content
                 if (delta.content) {
                   fullResponse += delta.content;
                   contentElement.textContent = fullResponse;
                 }
                 
-                // Accumulate reasoning
                 if (delta.reasoning) {
                   fullReasoning += delta.reasoning;
                   
-                  // Create thinking block on first reasoning chunk
                   if (!thinkingBlock) {
                     thinkingBlock = createThinkingBlock(fullReasoning);
                     messageDiv.insertBefore(thinkingBlock, messageDiv.firstChild);
                     thinkingTextElement = thinkingBlock.querySelector('.thinking-text');
                   } else {
-                    // Update existing thinking block
                     if (thinkingTextElement) {
                       thinkingTextElement.textContent = fullReasoning;
                     }
@@ -451,18 +892,36 @@
               chatContainer.scrollTop = chatContainer.scrollHeight;
             } catch (e) {
               // Ignore parse errors for incomplete JSON
-              console.log('Parse error (probably incomplete JSON):', e.message);
             }
           }
         }
 
         if (!fullResponse) {
-          contentElement.textContent = 'Sorry, I received an empty response.';
+          fullResponse = 'Sorry, I received an empty response.';
+          contentElement.textContent = fullResponse;
         }
+
+        // Save assistant message
+        const assistantMsg = {
+          role: 'assistant',
+          content: fullResponse,
+          reasoning: fullReasoning || null
+        };
+        chats[currentChatId].messages.push(assistantMsg);
+        chats[currentChatId].updatedAt = Date.now();
+        saveChats();
 
       } catch (error) {
         console.error('Error:', error);
-        contentElement.textContent = 'Sorry, an error occurred while processing your request.';
+        fullResponse = 'Sorry, an error occurred while processing your request.';
+        contentElement.textContent = fullResponse;
+        
+        // Save error message
+        chats[currentChatId].messages.push({
+          role: 'assistant',
+          content: fullResponse
+        });
+        saveChats();
       } finally {
         isStreaming = false;
         sendButton.disabled = false;
@@ -471,6 +930,9 @@
         userInput.focus();
       }
     }
+
+    // Initialize on load
+    loadChats();
   </script>
 </body>
 </html>

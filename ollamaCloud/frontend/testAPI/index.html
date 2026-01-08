@@ -11,12 +11,15 @@
       box-sizing: border-box;
     }
 
+    html, body {
+      height: 100%;
+      overflow: hidden;
+    }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       background: #000000;
       color: #b0b0b0;
-      height: 100vh;
-      overflow: hidden;
     }
 
     .container {
@@ -30,8 +33,10 @@
     .chat-container {
       flex: 1;
       overflow-y: auto;
+      overflow-x: hidden;
       padding: 36px;
       scroll-behavior: smooth;
+      min-height: 0;
     }
 
     .chat-container::-webkit-scrollbar {
@@ -80,6 +85,62 @@
       color: #666666;
     }
 
+    .thinking-block {
+      background: #0a0a0a;
+      border: 1px solid #1a1a1a;
+      border-radius: 4px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+
+    .thinking-header {
+      padding: 12px 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      user-select: none;
+      transition: background 0.2s;
+    }
+
+    .thinking-header:hover {
+      background: #0f0f0f;
+    }
+
+    .thinking-icon {
+      font-size: 12px;
+      transition: transform 0.2s;
+    }
+
+    .thinking-icon.expanded {
+      transform: rotate(90deg);
+    }
+
+    .thinking-title {
+      font-size: 13px;
+      color: #666666;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 500;
+    }
+
+    .thinking-content {
+      padding: 0 16px;
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+      color: #888888;
+      font-size: 14px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .thinking-content.expanded {
+      max-height: 2000px;
+      padding: 0 16px 16px;
+    }
+
     .message-content {
       line-height: 1.7;
       white-space: pre-wrap;
@@ -96,8 +157,10 @@
     }
 
     .input-container {
-      padding: 24px 36px 36px;
+      flex-shrink: 0;
+      padding: 24px 36px;
       background: #000000;
+      border-top: 1px solid #1a1a1a;
     }
 
     .input-wrapper {
@@ -192,7 +255,7 @@
       }
 
       .input-container {
-        padding: 16px 20px 20px;
+        padding: 16px 20px;
       }
 
       .empty-state h1 {
@@ -256,7 +319,7 @@
       }
     }
 
-    function addMessage(role, content) {
+    function addMessage(role, content, reasoning = null) {
       clearEmptyState();
       
       const messageDiv = document.createElement('div');
@@ -266,16 +329,41 @@
       const headerText = isUser ? 'You' : 'Assistant';
       const headerClass = isUser ? 'user-header' : 'assistant-header';
       
+      let thinkingHTML = '';
+      if (reasoning && !isUser) {
+        thinkingHTML = `
+          <div class="thinking-block">
+            <div class="thinking-header" onclick="toggleThinking(this)">
+              <span class="thinking-icon">▶</span>
+              <span class="thinking-title">Thinking</span>
+            </div>
+            <div class="thinking-content">${reasoning}</div>
+          </div>
+        `;
+      }
+      
       messageDiv.innerHTML = `
         <div class="message-header ${headerClass}">${headerText}</div>
+        ${thinkingHTML}
         <div class="message-content">${content}</div>
       `;
       
       chatContainer.appendChild(messageDiv);
       chatContainer.scrollTop = chatContainer.scrollHeight;
       
-      return messageDiv.querySelector('.message-content');
+      return {
+        contentEl: messageDiv.querySelector('.message-content'),
+        thinkingEl: messageDiv.querySelector('.thinking-content')
+      };
     }
+
+    window.toggleThinking = function(header) {
+      const icon = header.querySelector('.thinking-icon');
+      const content = header.parentElement.querySelector('.thinking-content');
+      
+      icon.classList.toggle('expanded');
+      content.classList.toggle('expanded');
+    };
 
     async function sendMessage() {
       if (isStreaming) return;
@@ -292,8 +380,9 @@
       userInput.value = '';
       userInput.style.height = 'auto';
 
-      const assistantContent = addMessage('assistant', '');
+      const messageElements = addMessage('assistant', '');
       let fullResponse = '';
+      let fullReasoning = '';
 
       try {
         const response = await fetch("https://api-ai.stringmanolo.qzz.io", {
@@ -325,14 +414,39 @@
               const jsonLine = line.replace(/^data: /, '');
               const json = JSON.parse(jsonLine);
               
-              if (json.choices && json.choices[0].delta && json.choices[0].delta.content) {
-                fullResponse += json.choices[0].delta.content;
-                assistantContent.textContent = fullResponse;
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-              } else if (json.message && json.message.content) {
-                fullResponse = json.message.content;
-                assistantContent.textContent = fullResponse;
-                chatContainer.scrollTop = chatContainer.scrollHeight;
+              // Handle streaming response
+              if (json.choices && json.choices[0].delta) {
+                const delta = json.choices[0].delta;
+                
+                if (delta.reasoning_content) {
+                  fullReasoning += delta.reasoning_content;
+                  if (messageElements.thinkingEl) {
+                    messageElements.thinkingEl.textContent = fullReasoning;
+                  }
+                }
+                
+                if (delta.content) {
+                  fullResponse += delta.content;
+                  messageElements.contentEl.textContent = fullResponse;
+                  chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
+              }
+              // Handle non-streaming response
+              else if (json.message) {
+                if (json.message.reasoning) {
+                  fullReasoning = json.message.reasoning;
+                }
+                if (json.message.content) {
+                  fullResponse = json.message.content;
+                  messageElements.contentEl.textContent = fullResponse;
+                  
+                  // If we got reasoning, recreate the message with it
+                  if (fullReasoning) {
+                    messageElements.contentEl.parentElement.remove();
+                    addMessage('assistant', fullResponse, fullReasoning);
+                  }
+                  chatContainer.scrollTop = chatContainer.scrollHeight;
+                }
               }
             } catch (e) {
               console.error('Parse error:', e);
@@ -341,12 +455,12 @@
         }
 
         if (!fullResponse) {
-          assistantContent.textContent = 'Sorry, I received an empty response.';
+          messageElements.contentEl.textContent = 'Sorry, I received an empty response.';
         }
 
       } catch (error) {
         console.error('Error:', error);
-        assistantContent.textContent = 'Sorry, an error occurred while processing your request.';
+        messageElements.contentEl.textContent = 'Sorry, an error occurred while processing your request.';
       } finally {
         isStreaming = false;
         sendButton.disabled = false;

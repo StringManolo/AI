@@ -1,5 +1,11 @@
 # AI
-AI webpage
+Multiple AI Apps
+
+## ai.stringmanolo.qzz.io 
+> Also https://stringmanolo.github.io/AI
+
+## AI Chat
+https://ai.stringmanolo.qzz.io/ollamaCloud/frontend/testAPI/index.html
 
 
 ### Cloudflare Workers

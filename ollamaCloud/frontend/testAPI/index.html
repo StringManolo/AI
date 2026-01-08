@@ -11,15 +11,12 @@
       box-sizing: border-box;
     }
 
-    html, body {
-      height: 100%;
-      overflow: hidden;
-    }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
       background: #000000;
       color: #b0b0b0;
+      height: 100vh;
+      overflow: hidden;
     }
 
     .container {
@@ -33,10 +30,8 @@
     .chat-container {
       flex: 1;
       overflow-y: auto;
-      overflow-x: hidden;
-      padding: 36px;
+      padding: 24px;
       scroll-behavior: smooth;
-      min-height: 0;
     }
 
     .chat-container::-webkit-scrollbar {
@@ -53,7 +48,7 @@
     }
 
     .message {
-      margin-bottom: 32px;
+      margin-bottom: 28px;
       animation: fadeIn 0.3s ease-in;
     }
 
@@ -94,11 +89,11 @@
     }
 
     .thinking-header {
-      padding: 12px 16px;
-      cursor: pointer;
       display: flex;
       align-items: center;
       gap: 8px;
+      padding: 10px 12px;
+      cursor: pointer;
       user-select: none;
       transition: background 0.2s;
     }
@@ -116,29 +111,44 @@
       transform: rotate(90deg);
     }
 
-    .thinking-title {
+    .thinking-label {
       font-size: 13px;
       color: #666666;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
       font-weight: 500;
     }
 
     .thinking-content {
-      padding: 0 16px;
       max-height: 0;
       overflow: hidden;
-      transition: max-height 0.3s ease-out, padding 0.3s ease-out;
-      color: #888888;
-      font-size: 14px;
-      line-height: 1.6;
-      white-space: pre-wrap;
-      word-wrap: break-word;
+      transition: max-height 0.3s ease;
+      padding: 0 12px;
     }
 
     .thinking-content.expanded {
-      max-height: 2000px;
-      padding: 0 16px 16px;
+      max-height: 500px;
+      padding: 0 12px 12px;
+      overflow-y: auto;
+    }
+
+    .thinking-content::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .thinking-content::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .thinking-content::-webkit-scrollbar-thumb {
+      background: #1a1a1a;
+      border-radius: 3px;
+    }
+
+    .thinking-text {
+      font-size: 14px;
+      color: #888888;
+      line-height: 1.6;
+      white-space: pre-wrap;
+      word-wrap: break-word;
     }
 
     .message-content {
@@ -157,8 +167,7 @@
     }
 
     .input-container {
-      flex-shrink: 0;
-      padding: 24px 36px;
+      padding: 16px 24px 24px;
       background: #000000;
       border-top: 1px solid #1a1a1a;
     }
@@ -179,12 +188,12 @@
       width: 100%;
       background: transparent;
       border: none;
-      padding: 16px 80px 16px 16px;
+      padding: 14px 80px 14px 14px;
       color: #ffffff;
-      font-size: 16px;
+      font-size: 15px;
       outline: none;
       resize: none;
-      max-height: 200px;
+      max-height: 150px;
       font-family: inherit;
       line-height: 1.5;
     }
@@ -195,12 +204,12 @@
 
     .send-button {
       position: absolute;
-      right: 12px;
-      bottom: 12px;
+      right: 10px;
+      bottom: 10px;
       background: #ffffff;
       border: none;
       border-radius: 4px;
-      padding: 8px 16px;
+      padding: 7px 14px;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -208,7 +217,7 @@
       transition: background 0.2s;
       color: #000000;
       font-weight: 600;
-      font-size: 14px;
+      font-size: 13px;
     }
 
     .send-button:hover:not(:disabled) {
@@ -251,11 +260,11 @@
 
     @media (max-width: 768px) {
       .chat-container {
-        padding: 20px;
+        padding: 16px;
       }
 
       .input-container {
-        padding: 16px 20px;
+        padding: 12px 16px 16px;
       }
 
       .empty-state h1 {
@@ -300,7 +309,7 @@
 
     userInput.addEventListener('input', function() {
       this.style.height = 'auto';
-      this.style.height = Math.min(this.scrollHeight, 200) + 'px';
+      this.style.height = Math.min(this.scrollHeight, 150) + 'px';
     });
 
     userInput.addEventListener('keydown', function(e) {
@@ -319,6 +328,38 @@
       }
     }
 
+    function createThinkingBlock(reasoning) {
+      const thinkingDiv = document.createElement('div');
+      thinkingDiv.className = 'thinking-block';
+      
+      const thinkingId = 'thinking-' + Date.now();
+      
+      thinkingDiv.innerHTML = `
+        <div class="thinking-header" onclick="toggleThinking('${thinkingId}')">
+          <span class="thinking-icon" id="icon-${thinkingId}">▶</span>
+          <span class="thinking-label">Thinking</span>
+        </div>
+        <div class="thinking-content" id="${thinkingId}">
+          <div class="thinking-text">${reasoning}</div>
+        </div>
+      `;
+      
+      return thinkingDiv;
+    }
+
+    window.toggleThinking = function(id) {
+      const content = document.getElementById(id);
+      const icon = document.getElementById('icon-' + id);
+      
+      if (content.classList.contains('expanded')) {
+        content.classList.remove('expanded');
+        icon.classList.remove('expanded');
+      } else {
+        content.classList.add('expanded');
+        icon.classList.add('expanded');
+      }
+    };
+
     function addMessage(role, content, reasoning = null) {
       clearEmptyState();
       
@@ -329,22 +370,8 @@
       const headerText = isUser ? 'You' : 'Assistant';
       const headerClass = isUser ? 'user-header' : 'assistant-header';
       
-      let thinkingHTML = '';
-      if (reasoning && !isUser) {
-        thinkingHTML = `
-          <div class="thinking-block">
-            <div class="thinking-header" onclick="toggleThinking(this)">
-              <span class="thinking-icon">▶</span>
-              <span class="thinking-title">Thinking</span>
-            </div>
-            <div class="thinking-content">${reasoning}</div>
-          </div>
-        `;
-      }
-      
       messageDiv.innerHTML = `
         <div class="message-header ${headerClass}">${headerText}</div>
-        ${thinkingHTML}
         <div class="message-content">${content}</div>
       `;
       
@@ -352,18 +379,10 @@
       chatContainer.scrollTop = chatContainer.scrollHeight;
       
       return {
-        contentEl: messageDiv.querySelector('.message-content'),
-        thinkingEl: messageDiv.querySelector('.thinking-content')
+        contentElement: messageDiv.querySelector('.message-content'),
+        messageDiv: messageDiv
       };
     }
-
-    window.toggleThinking = function(header) {
-      const icon = header.querySelector('.thinking-icon');
-      const content = header.parentElement.querySelector('.thinking-content');
-      
-      icon.classList.toggle('expanded');
-      content.classList.toggle('expanded');
-    };
 
     async function sendMessage() {
       if (isStreaming) return;
@@ -380,9 +399,9 @@
       userInput.value = '';
       userInput.style.height = 'auto';
 
-      const messageElements = addMessage('assistant', '');
+      const { contentElement, messageDiv } = addMessage('assistant', '');
       let fullResponse = '';
-      let fullReasoning = '';
+      let reasoning = null;
 
       try {
         const response = await fetch("https://api-ai.stringmanolo.qzz.io", {
@@ -414,39 +433,25 @@
               const jsonLine = line.replace(/^data: /, '');
               const json = JSON.parse(jsonLine);
               
-              // Handle streaming response
-              if (json.choices && json.choices[0].delta) {
-                const delta = json.choices[0].delta;
-                
-                if (delta.reasoning_content) {
-                  fullReasoning += delta.reasoning_content;
-                  if (messageElements.thinkingEl) {
-                    messageElements.thinkingEl.textContent = fullReasoning;
-                  }
-                }
-                
-                if (delta.content) {
-                  fullResponse += delta.content;
-                  messageElements.contentEl.textContent = fullResponse;
-                  chatContainer.scrollTop = chatContainer.scrollHeight;
-                }
+              // Handle streaming format
+              if (json.choices && json.choices[0].delta && json.choices[0].delta.content) {
+                fullResponse += json.choices[0].delta.content;
+                contentElement.textContent = fullResponse;
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+              } 
+              // Handle non-streaming format
+              else if (json.choices && json.choices[0].message) {
+                fullResponse = json.choices[0].message.content;
+                reasoning = json.choices[0].message.reasoning;
+                contentElement.textContent = fullResponse;
+                chatContainer.scrollTop = chatContainer.scrollHeight;
               }
-              // Handle non-streaming response
-              else if (json.message) {
-                if (json.message.reasoning) {
-                  fullReasoning = json.message.reasoning;
-                }
-                if (json.message.content) {
-                  fullResponse = json.message.content;
-                  messageElements.contentEl.textContent = fullResponse;
-                  
-                  // If we got reasoning, recreate the message with it
-                  if (fullReasoning) {
-                    messageElements.contentEl.parentElement.remove();
-                    addMessage('assistant', fullResponse, fullReasoning);
-                  }
-                  chatContainer.scrollTop = chatContainer.scrollHeight;
-                }
+              // Handle direct message format
+              else if (json.message && json.message.content) {
+                fullResponse = json.message.content;
+                reasoning = json.message.reasoning;
+                contentElement.textContent = fullResponse;
+                chatContainer.scrollTop = chatContainer.scrollHeight;
               }
             } catch (e) {
               console.error('Parse error:', e);
@@ -455,12 +460,18 @@
         }
 
         if (!fullResponse) {
-          messageElements.contentEl.textContent = 'Sorry, I received an empty response.';
+          contentElement.textContent = 'Sorry, I received an empty response.';
+        }
+
+        // Add thinking block if reasoning exists
+        if (reasoning) {
+          const thinkingBlock = createThinkingBlock(reasoning);
+          messageDiv.insertBefore(thinkingBlock, contentElement);
         }
 
       } catch (error) {
         console.error('Error:', error);
-        messageElements.contentEl.textContent = 'Sorry, an error occurred while processing your request.';
+        contentElement.textContent = 'Sorry, an error occurred while processing your request.';
       } finally {
         isStreaming = false;
         sendButton.disabled = false;

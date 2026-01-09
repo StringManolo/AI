@@ -29,6 +29,11 @@ export default {
 
       const isAdmin = env.ADMIN_CHAT_ID && userId.toString() === env.ADMIN_CHAT_ID.toString();
 
+      // === COMANDO DE GENERACIÓN DE IMÁGENES ===
+      if (userText.startsWith('/image ')) {
+        return await this.handleImageGeneration(userText.substring(7), chatId, userName, userId, isAdmin, env);
+      }
+
       // === COMANDOS DE ADMIN ===
       if (isAdmin && userText.startsWith('/')) {
         const parts = userText.split(' ');
@@ -183,7 +188,7 @@ export default {
         await this.sendMessagePlain(env, chatId, plainText);
       }
 
-      // LOGGING: Enviar conversación al admin (opcional)
+      // LOGGING al admin
       try {
         if (env.ADMIN_CHAT_ID && !isAdmin) {
           console.log("📊 Enviando log al admin...");
@@ -208,6 +213,71 @@ export default {
     return new Response("OK", { status: 200 });
   },
 
+  // === GENERACIÓN DE IMÁGENES ===
+  async handleImageGeneration(inputText, chatId, userName, userId, isAdmin, env) {
+    console.log("🎨 Generación de imagen solicitada");
+    
+    // Parsear resolución y prompt
+    const { width, height, prompt } = this.parseImageCommand(inputText);
+    
+    if (!prompt.trim()) {
+      await this.sendMessage(env, chatId, "❌ Debes especificar un prompt.\n\nEjemplo: <code>/image 1024x768 a cat astronaut</code>");
+      return new Response("OK");
+    }
+    
+    console.log(`📐 Resolución: ${width}x${height}`);
+    console.log(`✏️ Prompt: ${prompt}`);
+    
+    // Generar imagen con Pollinations
+    const imageUrl = await this.generateImageUrl(prompt, width, height);
+    
+    console.log("📤 Enviando imagen al usuario...");
+    await this.sendPhoto(env, chatId, imageUrl, `🎨 <b>${prompt}</b>\n\n${width}x${height}`);
+    
+    // Log al admin
+    try {
+      if (env.ADMIN_CHAT_ID && !isAdmin) {
+        const logMessage = `🎨 <b>Generación de imagen</b>\n\n` +
+          `👤 Usuario: @${userName} (ID: ${userId})\n` +
+          `📐 Resolución: ${width}x${height}\n` +
+          `✏️ Prompt: ${this.escapeHtml(prompt)}`;
+        
+        await this.sendMessage(env, env.ADMIN_CHAT_ID, logMessage);
+      }
+    } catch (err) {
+      console.error("❌ Error enviando log de imagen:", err);
+    }
+    
+    return new Response("OK");
+  },
+
+  // Parsear comando de imagen
+  parseImageCommand(text) {
+    // Detectar patrón: [WIDTHxHEIGHT] prompt
+    const resolutionMatch = text.match(/^(\d+)[xX](\d+)\s+(.+)$/);
+    
+    if (resolutionMatch) {
+      return {
+        width: parseInt(resolutionMatch[1]),
+        height: parseInt(resolutionMatch[2]),
+        prompt: resolutionMatch[3].trim()
+      };
+    }
+    
+    // Sin resolución especificada, usar default
+    return {
+      width: 1024,
+      height: 1024,
+      prompt: text.trim()
+    };
+  },
+
+  // Generar URL de Pollinations
+  generateImageUrl(prompt, width, height) {
+    const encodedPrompt = encodeURIComponent(prompt);
+    return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&model=flux&nologo=true`;
+  },
+
   // === MANEJO DE INLINE QUERIES ===
   async handleInlineQuery(inlineQuery, env) {
     const queryId = inlineQuery.id;
@@ -222,13 +292,52 @@ export default {
       await this.answerInlineQuery(env, queryId, [{
         type: "article",
         id: "1",
-        title: "Escribe tu pregunta",
-        description: "Escribe algo para que pueda ayudarte",
+        title: "Escribe tu pregunta o usa 'image' para generar imágenes",
+        description: "Ejemplos: 'hola' o 'image a cat astronaut'",
         input_message_content: {
-          message_text: "💡 Usa @smaicbot seguido de tu pregunta",
+          message_text: "💡 Usa @smaicbot seguido de tu pregunta\n🎨 O usa: <code>@smaicbot image tu prompt aquí</code>",
           parse_mode: "HTML"
         }
       }]);
+      return new Response("OK");
+    }
+
+    // Verificar si es comando de imagen
+    const imageMatch = userQuery.match(/^(image|\/image)\s+(.+)$/i);
+    
+    if (imageMatch) {
+      const imagePrompt = imageMatch[2];
+      const { width, height, prompt } = this.parseImageCommand(imagePrompt);
+      const imageUrl = this.generateImageUrl(prompt, width, height);
+      
+      await this.answerInlineQuery(env, queryId, [{
+        type: "photo",
+        id: "1",
+        photo_url: imageUrl,
+        thumbnail_url: imageUrl,
+        title: `🎨 ${prompt}`,
+        description: `${width}x${height}`,
+        caption: `🎨 <b>${prompt}</b>\n\n${width}x${height}`,
+        parse_mode: "HTML"
+      }]);
+      
+      // Log al admin
+      try {
+        if (env.ADMIN_CHAT_ID) {
+          const isAdmin = userId.toString() === env.ADMIN_CHAT_ID.toString();
+          if (!isAdmin) {
+            const logMessage = `🎨 <b>Inline - Generación de imagen</b>\n\n` +
+              `👤 Usuario: @${userName} (ID: ${userId})\n` +
+              `📐 Resolución: ${width}x${height}\n` +
+              `✏️ Prompt: ${this.escapeHtml(prompt)}`;
+            
+            await this.sendMessage(env, env.ADMIN_CHAT_ID, logMessage);
+          }
+        }
+      } catch (err) {
+        console.error("❌ Error enviando log inline imagen:", err);
+      }
+      
       return new Response("OK");
     }
 
@@ -417,6 +526,20 @@ Recuerda: NUNCA uses markdown. Solo HTML.`
     return fullResponse;
   },
 
+  // Enviar foto
+  async sendPhoto(env, chatId, photoUrl, caption) {
+    await fetch(`https://api.telegram.org/bot${env.TELEGRAM_TOKEN}/sendPhoto`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        chat_id: chatId,
+        photo: photoUrl,
+        caption: caption,
+        parse_mode: "HTML"
+      })
+    });
+  },
+
   // Enviar mensaje normal
   async sendMessage(env, chatId, text) {
     const response = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_TOKEN}/sendMessage`, {
@@ -443,7 +566,6 @@ Recuerda: NUNCA uses markdown. Solo HTML.`
       body: JSON.stringify({
         chat_id: chatId,
         text: text
-        // Sin parse_mode
       })
     });
   },
